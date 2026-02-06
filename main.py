@@ -13,27 +13,31 @@ Handles program loading and fetch-decode-execute loop.
 - Continue until HALT (opcode 43)
 '''
 
-from uvsim import UVSim #memory, accumulator, program counter?
+from uvsim import UVSimMemory #memory, accumulator, program counter?
 from io import load_program #reads program file imput
 from operations import OPERATIONS #holds the operations mapping
 
-def execute_program(uvsim: UVSim) -> None:
+def execute_program(uvsim: UVSimMemory) -> None:
 
-    memory_size = 100
+    memory_size = len(uvsim.memory)
 
     while True:
-        ic = uvsim.instruction_counter
-        if not (0 <= ic < memory_size):
-            raise RuntimeError(f"Program counter out of bounds: {ic}")
+        if not (0 <= uvsim.program_counter < memory_size):
+            raise RuntimeError(f"Program counter out of bounds: {uvsim.program_counter}")
 
-        instruction = uvsim.memory[uvsim.instruction_counter] #access current memory through program counter
-        uvsim.instruction_counter += 1 #move to next instruction by incrementing PC
+        instruction = uvsim.fetch_instruction()
+        ic = uvsim.program_counter - 1 # grabs current program counter subtracts one as it has already been incremented in uvsim
         
-        if not isinstance(instruction, int):
-            raise ValueError(f"Non-integer instruction: {instruction}")
+        if not isinstance(instruction, str):
+            raise ValueError(f"Non-string instruction at address {ic}: {instruction!r}")
         
-        opcode = instruction // 100 
-        operand = instruction % 100 
+        try:
+            instruction_int = int(instruction)
+        except ValueError:
+            raise RuntimeError(f"Invalid instruction format at address {ic}: {instruction!r}")
+        
+        opcode = instruction_int // 100 
+        operand = instruction_int % 100 
         
         if opcode not in OPERATIONS:
             raise RuntimeError(f"Invalid opcode {opcode}")
@@ -48,23 +52,21 @@ def execute_program(uvsim: UVSim) -> None:
             raise RuntimeError(
                 f"Error executing instruction at address {ic}: "
                 f"instruction={instruction}, opcode={opcode}, operand={operand}"
-            )
+            ) from e
         
     return
 
 def main() -> None:
     filename = input("Enter BasicML program file: ") #ask user for file
 
-    uvsim = UVSim() #create uvsim instance
+    uvsim = UVSimMemory() #create uvsim instance
 
-    try:
-        load_program(filename, uvsim) #read BasicML file and place instructions into UVSim memory.
-
-        execute_program(uvsim) #start running program that's loaded in UVSim machine.
-
-    except Exception as e:
-        raise RuntimeError(f"Runtime error: {e}")
+    check = uvsim.load_program(filename)
+    if not check:
+        return
     
+    execute_program(uvsim)
+
     return
 
 if __name__ == "__main__":
