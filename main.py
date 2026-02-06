@@ -14,7 +14,6 @@ Handles program loading and fetch-decode-execute loop.
 '''
 
 from uvsim import UVSimMemory #memory, accumulator, program counter?
-from io import load_program #reads program file imput
 from operations import OPERATIONS #holds the operations mapping
 
 def execute_program(uvsim: UVSimMemory) -> None:
@@ -36,14 +35,11 @@ def execute_program(uvsim: UVSimMemory) -> None:
         except ValueError:
             raise RuntimeError(f"Invalid instruction format at address {ic}: {instruction!r}")
         
-        opcode = instruction_int // 100 
-        operand = instruction_int % 100 
+        opcode = abs(instruction_int) // 100 
+        operand = abs(instruction_int) % 100 
         
         if opcode not in OPERATIONS:
             raise RuntimeError(f"Invalid opcode {opcode}")
-
-        if opcode == 43: #HALT I SAID HALT
-            break
         
         try:
             OPERATIONS[opcode](uvsim, operand) 
@@ -53,6 +49,9 @@ def execute_program(uvsim: UVSimMemory) -> None:
                 f"Error executing instruction at address {ic}: "
                 f"instruction={instruction}, opcode={opcode}, operand={operand}"
             ) from e
+        
+        if opcode == 43: #HALT I SAID HALT
+            break
         
     return
 
